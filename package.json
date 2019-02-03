@@ -1,0 +1,46 @@
+{
+  "name": "elm-example-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "tape api/**/*.test.js",
+    "build": "pnpm run build:client && node ./api/index.js",
+    "build:client": "parcel build ./index.html",
+    "start": "concurrently \"pnpm run start:api\" \"pnpm run start:client\"",
+    "start:api": "NODE_ENV=development PORT=9966 nodemon --ignore src/ --ignore public/ ./api/index.js | pino-colada",
+    "start:client": "parcel serve ./index.html"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "browser-sync": "^2.26.3",
+    "concurrently": "^4.1.0",
+    "elm-hot": "^1.0.1",
+    "less": "^3.9.0",
+    "node-elm-compiler": "^5.0.1",
+    "nodemon": "^1.18.9",
+    "parcel-bundler": "^1.11.0",
+    "pino-colada": "^1.4.4",
+    "sass": "^1.16.1",
+    "tape": "^4.9.2"
+  },
+  "dependencies": {
+    "@abradley2/cycle-effects": "^4.2.0",
+    "@cycle/http": "^15.1.0",
+    "@cycle/run": "^5.2.0",
+    "body-parser": "^1.18.3",
+    "config": "^3.0.1",
+    "cors": "^2.8.5",
+    "ecstatic": "^3.3.0",
+    "express": "^4.16.4",
+    "is-my-json-valid": "^2.19.0",
+    "jsonwebtoken": "^8.4.0",
+    "localforage": "^1.7.3",
+    "lodash.defer": "^4.1.0",
+    "pino": "^5.11.1",
+    "query-string": "^6.2.0",
+    "uuid": "^3.3.2",
+    "xstream": "^11.10.0"
+  }
+}
