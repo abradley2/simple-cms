@@ -7,6 +7,7 @@
     "dependencies": {
         "direct": {
             "TSFoster/elm-uuid": "2.2.0",
+            "abradley2/form-elements": "3.0.0",
             "elm/browser": "1.0.1",
             "elm/core": "1.0.2",
             "elm/html": "1.0.0",
@@ -14,9 +15,12 @@
             "elm/json": "1.1.2",
             "elm/random": "1.0.0",
             "elm/url": "1.0.0",
-            "krisajenkins/remotedata": "6.0.1"
+            "krisajenkins/remotedata": "6.0.1",
+            "rtfeldman/elm-css": "16.0.0",
+            "z5h/component-result": "1.0.1"
         },
         "indirect": {
+            "Skinney/murmur3": "2.0.8",
             "TSFoster/elm-md5": "2.0.0",
             "TSFoster/elm-sha1": "1.0.1",
             "elm/bytes": "1.0.7",

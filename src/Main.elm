@@ -2,11 +2,13 @@ port module Main exposing (main)
 
 import Browser exposing (Document)
 import Browser.Navigation as Navigation
+import ComponentResult as CR
 import Data.Config exposing (ConfigResponse, getConfig)
 import Data.Token exposing (TokenResponse, getToken)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
+import Page.Folders.Main as FoldersPage
 import Random
 import RemoteData exposing (RemoteData(..), WebData)
 import Types exposing (Flags)
@@ -26,13 +28,22 @@ port storeToken : String -> Cmd msg
 port cleanUrl : () -> Cmd msg
 
 
-type Msg
+type
+    Msg
+    -- application level messages
     = NoOp
     | ConfigResponseReceived (Result Http.Error ConfigResponse)
     | TokenResponseReceived (Result Http.Error TokenResponse)
     | LoadStoredToken (Maybe String)
     | OnUrlRequest Browser.UrlRequest
     | GeneratedClientId UUID.UUID
+      -- page messages
+    | FoldersMsg FoldersPage.Msg
+
+
+type Page
+    = NotFound (Maybe String)
+    | Folders FoldersPage.Model
 
 
 type alias Model =
@@ -44,11 +55,13 @@ type alias Model =
     , clientId : Maybe UUID.UUID
     , oauthCode : Maybe String
     , route : Route
+    , page : Page
     }
 
 
 type Route
     = HomeRoute (Maybe String)
+    | FoldersRoute
     | NotFoundRoute
 
 
@@ -61,6 +74,20 @@ urlToRoute url =
         )
         url
         |> Maybe.withDefault NotFoundRoute
+
+
+routeToPage : Flags -> Route -> ( Page, Cmd Msg )
+routeToPage flags route =
+    case route of
+        FoldersRoute ->
+            FoldersPage.init flags
+                |> CR.mapModel Folders
+                |> CR.mapMsg FoldersMsg
+                |> CR.applyExternalMsg (\ext result -> result)
+                |> CR.resolve
+
+        _ ->
+            ( NotFound Nothing, Cmd.none )
 
 
 init : Flags -> Url.Url -> Navigation.Key -> ( Model, Cmd Msg )
@@ -84,6 +111,9 @@ init flags url key =
         cleanUrlCmd =
             Maybe.map (\_ -> cleanUrl ()) oauthCode
                 |> Maybe.withDefault Cmd.none
+
+        ( pageModel, pageCmd ) =
+            routeToPage flags route
     in
     ( { flags = flags
       , key = key
@@ -93,6 +123,7 @@ init flags url key =
       , clientId = Nothing
       , oauthCode = oauthCode
       , route = route
+      , page = pageModel
       }
     , Cmd.batch
         [ -- load any server based configuration variables
@@ -129,7 +160,7 @@ view : Model -> Document Msg
 view model =
     { title = "hi"
     , body =
-        [ nav [ class "navbar" ]
+        [ nav [ class "navbar has-shadow is-fixed-top" ]
             [ div
                 [ class "navbar-menu is-active" ]
                 [ div [ class "navbar-start" ]
@@ -139,15 +170,17 @@ view model =
                     ]
                 ]
             ]
-        , div [ class "section" ]
-            [ div
-                [ class "container"
-                ]
-                [ RemoteData.map2
-                    (loadedView model)
-                    model.config
-                    model.token
-                    |> RemoteData.withDefault (div [] [ text "loading!" ])
+        , div [ class "has-navbar-fixed-top" ]
+            [ div [ class "section" ]
+                [ div
+                    [ class "container"
+                    ]
+                    [ RemoteData.map2
+                        (loadedView model)
+                        model.config
+                        model.token
+                        |> RemoteData.withDefault (div [] [ text "loading!" ])
+                    ]
                 ]
             ]
         ]
