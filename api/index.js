@@ -24,6 +24,11 @@ api.use(bodyParser.json())
 server.use('/api', api)
 
 api.get(
+  '/folders',
+  createHandler(require('./handlers/folders').get)
+)
+
+api.get(
   '/config',
   createHandler(require('./handlers/client-config').handler)
 )

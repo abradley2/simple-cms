@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "tape api/**/*.test.js",
-    "build": "pnpm run build:client && node ./api/index.js",
+    "build": "npm run build:client && node ./api/index.js",
     "build:client": "parcel build ./index.html",
-    "start": "concurrently \"pnpm run start:api\" \"pnpm run start:client\"",
+    "start": "concurrently \"npm run start:api\" \"npm run start:client\"",
     "start:api": "NODE_ENV=development PORT=9966 nodemon --ignore src/ --ignore public/ ./api/index.js | pino-colada",
     "start:client": "parcel serve ./index.html"
   },

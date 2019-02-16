@@ -8,7 +8,9 @@ import Data.Token exposing (TokenResponse, getToken)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
+import Navbar
 import Page.Folders.Main as FoldersPage
+import Page.Upload.Main as UploadPage
 import Random
 import RemoteData exposing (RemoteData(..), WebData)
 import Types exposing (Flags)
@@ -36,14 +38,18 @@ type
     | TokenResponseReceived (Result Http.Error TokenResponse)
     | LoadStoredToken (Maybe String)
     | OnUrlRequest Browser.UrlRequest
+    | OnUrlChange Url.Url
     | GeneratedClientId UUID.UUID
       -- page messages
+    | NavbarMsg Navbar.Msg
     | FoldersMsg FoldersPage.Msg
+    | UploadMsg UploadPage.Msg
 
 
 type Page
     = NotFound (Maybe String)
     | Folders FoldersPage.Model
+    | Upload UploadPage.Model
 
 
 type alias Model =
@@ -55,6 +61,7 @@ type alias Model =
     , clientId : Maybe UUID.UUID
     , oauthCode : Maybe String
     , route : Route
+    , navbar : Navbar.Model
     , page : Page
     }
 
@@ -62,6 +69,7 @@ type alias Model =
 type Route
     = HomeRoute (Maybe String)
     | FoldersRoute
+    | UploadRoute
     | NotFoundRoute
 
 
@@ -70,24 +78,37 @@ urlToRoute url =
     Parser.parse
         (Parser.oneOf
             [ Parser.map HomeRoute (Parser.top <?> Q.string "code")
+            , Parser.map FoldersRoute (Parser.s "folders")
+            , Parser.map UploadRoute (Parser.s "upload")
             ]
         )
         url
         |> Maybe.withDefault NotFoundRoute
 
 
-routeToPage : Flags -> Route -> ( Page, Cmd Msg )
-routeToPage flags route =
+routeToPage : Flags -> Model -> Route -> ( Model, Cmd Msg )
+routeToPage flags model route =
     case route of
         FoldersRoute ->
             FoldersPage.init flags
-                |> CR.mapModel Folders
+                |> CR.mapModel (\pageModel -> { model | page = Folders pageModel })
                 |> CR.mapMsg FoldersMsg
                 |> CR.applyExternalMsg (\ext result -> result)
                 |> CR.resolve
 
+        UploadRoute ->
+            UploadPage.init flags
+                |> CR.mapModel (\pageModel -> { model | page = Upload pageModel })
+                |> CR.mapMsg UploadMsg
+                |> CR.applyExternalMsg (\ext result -> result)
+                |> CR.resolve
+
         _ ->
-            ( NotFound Nothing, Cmd.none )
+            ( { model
+                | page = NotFound Nothing
+              }
+            , Cmd.none
+            )
 
 
 init : Flags -> Url.Url -> Navigation.Key -> ( Model, Cmd Msg )
@@ -112,22 +133,29 @@ init flags url key =
             Maybe.map (\_ -> cleanUrl ()) oauthCode
                 |> Maybe.withDefault Cmd.none
 
-        ( pageModel, pageCmd ) =
-            routeToPage flags route
+        initModel =
+            { flags = flags
+            , key = key
+            , url = url
+            , config = Loading
+            , token = Loading
+            , clientId = Nothing
+            , oauthCode = oauthCode
+            , route = route
+            , navbar = Navbar.init
+            , page = NotFound Nothing
+            }
+
+        ( model, pageCmd ) =
+            routeToPage flags initModel route
     in
-    ( { flags = flags
-      , key = key
-      , url = url
-      , config = Loading
-      , token = Loading
-      , clientId = Nothing
-      , oauthCode = oauthCode
-      , route = route
-      , page = pageModel
-      }
+    ( model
     , Cmd.batch
-        [ -- load any server based configuration variables
-          getConfig flags ConfigResponseReceived
+        [ pageCmd
+        , -- load any server based configuration variables
+          getConfig
+            flags
+            ConfigResponseReceived
 
         -- uuid for clientId or "state" variable. We can use this for oauth
         , Random.generate GeneratedClientId UUID.generator
@@ -143,7 +171,17 @@ loadedView model config mToken =
     div []
         [ case mToken of
             Just token ->
-                div [] [ text "Welcome back" ]
+                case model.page of
+                    Folders foldersPage ->
+                        FoldersPage.view foldersPage
+                            |> Html.map FoldersMsg
+
+                    Upload uploadPage ->
+                        UploadPage.view uploadPage
+                            |> Html.map UploadMsg
+
+                    _ ->
+                        div [] [ text "hello there" ]
 
             Nothing ->
                 let
@@ -160,23 +198,13 @@ view : Model -> Document Msg
 view model =
     { title = "hi"
     , body =
-        [ nav [ class "navbar has-shadow is-fixed-top" ]
-            [ div
-                [ class "navbar-menu is-active" ]
-                [ div [ class "navbar-start" ]
-                    [ a [ href "/", class "navbar-item" ] [ text "Home" ]
-                    , a [ href "/", class "navbar-item" ] [ text "Search" ]
-                    , a [ href "/", class "navbar-item" ] [ text "Store" ]
-                    ]
-                ]
-            ]
+        [ Html.map NavbarMsg (Navbar.view model.navbar)
         , div [ class "has-navbar-fixed-top" ]
             [ div [ class "section" ]
                 [ div
                     [ class "container"
                     ]
-                    [ RemoteData.map2
-                        (loadedView model)
+                    [ RemoteData.map2 (loadedView model)
                         model.config
                         model.token
                         |> RemoteData.withDefault (div [] [ text "loading!" ])
@@ -211,7 +239,11 @@ update msg model =
                     ( model, Navigation.load url )
 
                 Browser.Internal url ->
-                    ( model, Cmd.none )
+                    ( model, Navigation.pushUrl model.key <| Url.toString url )
+
+        OnUrlChange url ->
+            urlToRoute url
+                |> routeToPage model.flags model
 
         TokenResponseReceived result ->
             case result of
@@ -243,8 +275,31 @@ update msg model =
             in
             ( { model | clientId = Just clientId }, getTokenCmd )
 
+        NavbarMsg navbarMsg ->
+            Navbar.update model.flags navbarMsg model.navbar
+                |> CR.mapModel (\navbar -> { model | navbar = navbar })
+                |> CR.mapMsg NavbarMsg
+                |> CR.applyExternalMsg (\ext result -> result)
+                |> CR.resolve
+
         _ ->
-            ( model, Cmd.none )
+            case ( model.page, msg ) of
+                ( Folders foldersPage, FoldersMsg foldersMsg ) ->
+                    FoldersPage.update model.flags foldersMsg foldersPage
+                        |> CR.mapModel (\page -> { model | page = Folders page })
+                        |> CR.mapMsg FoldersMsg
+                        |> CR.applyExternalMsg (\ext result -> result)
+                        |> CR.resolve
+
+                ( Upload uploadPage, UploadMsg uploadMsg ) ->
+                    UploadPage.update model.flags uploadMsg uploadPage
+                        |> CR.mapModel (\page -> { model | page = Upload page })
+                        |> CR.mapMsg UploadMsg
+                        |> CR.applyExternalMsg (\ext result -> result)
+                        |> CR.resolve
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -261,7 +316,7 @@ main =
         { init = init
         , view = view
         , update = update
-        , onUrlChange = \_ -> NoOp
+        , onUrlChange = OnUrlChange
         , onUrlRequest = OnUrlRequest
         , subscriptions = subscriptions
         }

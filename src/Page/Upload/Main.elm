@@ -1,4 +1,4 @@
-module Page.Folders.Main exposing (Model, Msg(..), init, update, view)
+module Page.Upload.Main exposing (Model, Msg(..), init, update, view)
 
 import ComponentResult as CR
 import Html.Styled as H
@@ -37,7 +37,7 @@ update flags msg model =
 
 view_ : Model -> H.Html Msg
 view_ model =
-    H.div [] [ H.text "Folders Page" ]
+    H.div [] [ H.text "upload page" ]
 
 
 view =
