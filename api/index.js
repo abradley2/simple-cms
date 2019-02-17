@@ -7,7 +7,6 @@ const express = require('express')
 const makeEFFECTSDrivers = require('@abradley2/cycle-effects')
 const { makeHTTPDriver } = require('@cycle/http')
 const ecstatic = require('ecstatic')
-const qs = require('query-string')
 const uuid = require('uuid')
 const bodyParser = require('body-parser')
 const cors = require('cors')
@@ -24,6 +23,11 @@ server.use('/api', api)
 api.get(
   '/folders',
   createHandler(require('./handlers/folders').get)
+)
+
+api.post(
+  '/folders',
+  createHandler(require('./handlers/folders').post)
 )
 
 api.post(
@@ -90,10 +94,10 @@ const readIndex = new Promise((resolve, reject) => {
   })
 })
 
-function serveIndex(req, res) {
+function serveIndex (req, res) {
   res.set('Content-Type', 'text/html')
   readIndex
-    .then(page =>  {
+    .then(page => {
       res.status(200).send(page)
     })
     .catch(err => {

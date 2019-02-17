@@ -12,7 +12,7 @@ import Page.Folders.Main as FoldersPage
 import Page.Upload.Main as UploadPage
 import Random
 import RemoteData exposing (RemoteData(..), WebData)
-import Types exposing (Flags, PageMsg(..), Taco)
+import Types exposing (Flags, PageMsg(..), Taco, Token, stringToToken)
 import UUID
 import Url
 import Url.Parser as Parser exposing ((</>), (<?>))
@@ -68,7 +68,7 @@ type alias Model =
 getTaco : Model -> Taco
 getTaco model =
     { apiUrl = model.flags.apiUrl
-    , token = RemoteData.toMaybe model.token
+    , token = RemoteData.toMaybe model.token |> Maybe.map stringToToken
     }
 
 
@@ -168,16 +168,16 @@ init flags url key =
     )
 
 
-loadedView : Model -> Html Msg
-loadedView model =
+loadedView : Model -> Token -> Html Msg
+loadedView model token =
     div []
         [ case model.page of
             Folders foldersPage ->
-                FoldersPage.view foldersPage
+                FoldersPage.view ( foldersPage, token )
                     |> Html.map FoldersMsg
 
             Upload uploadPage ->
-                UploadPage.view uploadPage
+                UploadPage.view ( uploadPage, token )
                     |> Html.map UploadMsg
 
             _ ->
@@ -204,7 +204,7 @@ view model =
         , div [ style "margin-top" "48px" ]
             [ case ( model.token, model.storedToken ) of
                 ( Success token, _ ) ->
-                    loadedView model
+                    loadedView model (stringToToken token)
 
                 ( _, Failure _ ) ->
                     loginView model

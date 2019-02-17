@@ -3,7 +3,7 @@ module Page.Folders.Main exposing (Model, Msg(..), init, update, view)
 import ComponentResult as CR
 import Css exposing (..)
 import Css.Transitions as Transitions
-import Data.Folders exposing (GetFoldersResponse, getFolders)
+import Data.Folders exposing (CreateFolderResponse, GetFoldersResponse, createFolder, getFolders)
 import FormElements.TextInput as TextInput
 import Html.Styled as H
 import Html.Styled.Attributes as A
@@ -12,7 +12,7 @@ import Http
 import Maybe.Extra as M
 import RemoteData exposing (RemoteData(..), WebData)
 import Styles as Styles
-import Types exposing (PageMsg(..), Taco)
+import Types exposing (PageMsg(..), Taco, Token)
 
 
 type alias Model =
@@ -27,7 +27,9 @@ type Msg
     = NoOp
     | NewFolderTextInputMsg TextInput.Msg
     | FoldersResponseReceived (Result Http.Error GetFoldersResponse)
+    | CreateNewFolderResponseReceived (Result Http.Error CreateFolderResponse)
     | ToggleCreatingNewFolder Bool
+    | SubmitCreateFolder Token
 
 
 type alias PageResult =
@@ -62,6 +64,21 @@ initNewFolderNameInput =
 update : Taco -> Msg -> Model -> PageResult
 update taco msg model =
     case msg of
+        SubmitCreateFolder token ->
+            let
+                newModel =
+                    { model | creatingNewFolder = False }
+
+                createFolderCmd =
+                    createFolder
+                        taco
+                        CreateNewFolderResponseReceived
+                        model.newFolderName
+                        token
+            in
+            CR.withModel newModel
+                |> CR.withCmd createFolderCmd
+
         ToggleCreatingNewFolder isCreating ->
             if isCreating then
                 let
@@ -144,8 +161,8 @@ newFolderTextInputProps model =
     }
 
 
-view_ : Model -> H.Html Msg
-view_ model =
+view_ : ( Model, Token ) -> H.Html Msg
+view_ ( model, token ) =
     H.div
         [ A.css
             [ Styles.container ]
@@ -183,6 +200,7 @@ view_ model =
                     [ A.css
                         [ displayFlex
                         , justifyContent center
+                        , marginTop (px 16)
                         ]
                     ]
                     [ TextInput.view model.newFolderTextInput (newFolderTextInputProps model)
@@ -210,7 +228,8 @@ view_ model =
                             [ Styles.buttonReset
                             , Styles.defaultButton
                             ]
-                        , E.onClick (ToggleCreatingNewFolder False)
+                        , A.disabled <| model.newFolderName == ""
+                        , E.onClick (SubmitCreateFolder token)
                         ]
                         [ H.text "Submit"
                         ]

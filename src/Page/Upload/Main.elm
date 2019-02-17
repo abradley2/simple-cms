@@ -4,7 +4,7 @@ import ComponentResult as CR
 import Html.Styled as H
 import Html.Styled.Attributes as A
 import Html.Styled.Events as E
-import Types exposing (PageMsg(..), Taco)
+import Types exposing (PageMsg(..), Taco, Token)
 
 
 type alias Model =
@@ -31,8 +31,8 @@ update taco msg model =
         model
 
 
-view_ : Model -> H.Html Msg
-view_ model =
+view_ : ( Model, Token ) -> H.Html Msg
+view_ ( model, token ) =
     H.div [] [ H.text "upload page" ]
 
 
