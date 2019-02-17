@@ -1,4 +1,3 @@
-import './src/Styles.scss'
 import { Elm } from './src/Main.elm'
 import localforage from 'localforage'
 

@@ -7,15 +7,11 @@ import Html.Styled.Attributes as A
 import Html.Styled.Events as E
 import Http
 import RemoteData exposing (RemoteData(..), WebData)
-import Types exposing (Flags)
+import Types exposing (PageMsg(..), Taco)
 
 
 type alias Model =
     {}
-
-
-type ExternalMsg
-    = NoOp_
 
 
 type Msg
@@ -24,17 +20,21 @@ type Msg
 
 
 type alias PageResult =
-    CR.ComponentResult Model Msg ExternalMsg Never
+    CR.ComponentResult Model Msg PageMsg Never
 
 
-init : Flags -> PageResult
-init flags =
+init : Taco -> PageResult
+init taco =
     CR.withModel
         {}
+        |> CR.withCmd
+            (Maybe.map (getFolders taco FoldersResponseReceived) taco.token
+                |> Maybe.withDefault Cmd.none
+            )
 
 
-update : Flags -> Msg -> Model -> PageResult
-update flags msg model =
+update : Taco -> Msg -> Model -> PageResult
+update taco msg model =
     CR.withModel
         model
 

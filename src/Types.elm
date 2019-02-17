@@ -1,4 +1,4 @@
-module Types exposing (Flags, Taco)
+module Types exposing (Flags, PageMsg(..), Taco)
 
 
 type alias Flags =
@@ -12,3 +12,7 @@ type alias Taco =
     { apiUrl : String
     , token : Maybe String
     }
+
+
+type PageMsg
+    = NoOpExternal

@@ -12,10 +12,9 @@ import Page.Folders.Main as FoldersPage
 import Page.Upload.Main as UploadPage
 import Random
 import RemoteData exposing (RemoteData(..), WebData)
-import Types exposing (Flags, Taco)
+import Types exposing (Flags, PageMsg(..), Taco)
 import UUID
 import Url
-import Url.Builder as Builder
 import Url.Parser as Parser exposing ((</>), (<?>))
 import Url.Parser.Query as Q
 
@@ -93,18 +92,18 @@ urlToRoute url =
         |> Maybe.withDefault NotFoundRoute
 
 
-routeToPage : Flags -> Model -> Route -> ( Model, Cmd Msg )
-routeToPage flags model route =
+routeToPage : Model -> Route -> ( Model, Cmd Msg )
+routeToPage model route =
     case route of
         FoldersRoute ->
-            FoldersPage.init flags
+            FoldersPage.init (getTaco model)
                 |> CR.mapModel (\pageModel -> { model | page = Folders pageModel })
                 |> CR.mapMsg FoldersMsg
                 |> CR.applyExternalMsg (\ext result -> result)
                 |> CR.resolve
 
         UploadRoute ->
-            UploadPage.init flags
+            UploadPage.init (getTaco model)
                 |> CR.mapModel (\pageModel -> { model | page = Upload pageModel })
                 |> CR.mapMsg UploadMsg
                 |> CR.applyExternalMsg (\ext result -> result)
@@ -154,7 +153,7 @@ init flags url key =
             }
 
         ( model, pageCmd ) =
-            routeToPage flags initModel route
+            routeToPage initModel route
     in
     ( model
     , Cmd.batch
@@ -202,25 +201,28 @@ view model =
     { title = "hi"
     , body =
         [ Html.map NavbarMsg (Navbar.view model.navbar)
-        , div [ class "has-navbar-fixed-top" ]
-            [ div [ class "section" ]
-                [ div
-                    [ class "container"
-                    ]
-                    [ case ( model.token, model.storedToken ) of
-                        ( Success token, _ ) ->
-                            loadedView model
+        , div [ style "margin-top" "48px" ]
+            [ case ( model.token, model.storedToken ) of
+                ( Success token, _ ) ->
+                    loadedView model
 
-                        ( _, Failure _ ) ->
-                            loginView model
+                ( _, Failure _ ) ->
+                    loginView model
 
-                        _ ->
-                            div [] [ text "loading" ]
-                    ]
-                ]
+                _ ->
+                    div [] [ text "loading" ]
             ]
         ]
     }
+
+
+type alias AppResult =
+    CR.ComponentResult Model Msg PageMsg Never
+
+
+handlePageMsg : PageMsg -> AppResult -> AppResult
+handlePageMsg msg result =
+    result
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -237,7 +239,11 @@ update msg model =
                     Maybe.map Success result
                         |> Maybe.withDefault NotAsked
               }
-            , Cmd.none
+            , Maybe.map
+                -- refresh if we have a token
+                (\_ -> Navigation.replaceUrl model.key <| Url.toString model.url)
+                result
+                |> Maybe.withDefault Cmd.none
             )
 
         OnUrlRequest req ->
@@ -250,7 +256,7 @@ update msg model =
 
         OnUrlChange url ->
             urlToRoute url
-                |> routeToPage model.flags model
+                |> routeToPage model
 
         TokenResponseReceived result ->
             case result of
@@ -258,7 +264,12 @@ update msg model =
                     ( { model
                         | token = Success tokenResponse.token
                       }
-                    , storeToken tokenResponse.token
+                    , Cmd.batch
+                        [ storeToken tokenResponse.token
+
+                        -- refresh if we have a token
+                        , Navigation.replaceUrl model.key (Url.toString model.url)
+                        ]
                     )
 
                 Result.Err err ->
@@ -297,14 +308,14 @@ updatePage : Msg -> Model -> ( Model, Cmd Msg )
 updatePage msg model =
     case ( model.page, msg ) of
         ( Folders foldersPage, FoldersMsg foldersMsg ) ->
-            FoldersPage.update model.flags foldersMsg foldersPage
+            FoldersPage.update (getTaco model) foldersMsg foldersPage
                 |> CR.mapModel (\page -> { model | page = Folders page })
                 |> CR.mapMsg FoldersMsg
                 |> CR.applyExternalMsg (\ext result -> result)
                 |> CR.resolve
 
         ( Upload uploadPage, UploadMsg uploadMsg ) ->
-            UploadPage.update model.flags uploadMsg uploadPage
+            UploadPage.update (getTaco model) uploadMsg uploadPage
                 |> CR.mapModel (\page -> { model | page = Upload page })
                 |> CR.mapMsg UploadMsg
                 |> CR.applyExternalMsg (\ext result -> result)

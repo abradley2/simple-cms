@@ -4,15 +4,11 @@ import ComponentResult as CR
 import Html.Styled as H
 import Html.Styled.Attributes as A
 import Html.Styled.Events as E
-import Types exposing (Flags)
+import Types exposing (PageMsg(..), Taco)
 
 
 type alias Model =
     {}
-
-
-type ExternalMsg
-    = NoOp_
 
 
 type Msg
@@ -20,17 +16,17 @@ type Msg
 
 
 type alias PageResult =
-    CR.ComponentResult Model Msg ExternalMsg Never
+    CR.ComponentResult Model Msg PageMsg Never
 
 
-init : Flags -> PageResult
-init flags =
+init : Taco -> PageResult
+init taco =
     CR.withModel
         {}
 
 
-update : Flags -> Msg -> Model -> PageResult
-update flags msg model =
+update : Taco -> Msg -> Model -> PageResult
+update taco msg model =
     CR.withModel
         model
 
