@@ -131,6 +131,19 @@ loadingView =
     H.div [] [ H.text "loading folders" ]
 
 
+newFolderTextInputProps : Model -> TextInput.Props
+newFolderTextInputProps model =
+    let
+        props =
+            TextInput.defaultProps
+    in
+    { props
+        | label = "Folder Name"
+        , value = model.newFolderName
+        , helperText = Just "(This can be changed later)"
+    }
+
+
 view_ : Model -> H.Html Msg
 view_ model =
     H.div
@@ -166,7 +179,16 @@ view_ model =
                         ]
                     ]
                 ]
-                [ H.div [] []
+                [ H.div
+                    [ A.css
+                        [ displayFlex
+                        , justifyContent center
+                        ]
+                    ]
+                    [ TextInput.view model.newFolderTextInput (newFolderTextInputProps model)
+                        |> H.fromUnstyled
+                        |> H.map NewFolderTextInputMsg
+                    ]
                 , H.div
                     [ A.css
                         [ width (px 200)
