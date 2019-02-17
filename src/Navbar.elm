@@ -1,4 +1,4 @@
-module Navbar exposing (ExternalMsg, Model, Msg(..), init, update, view)
+module Navbar exposing (Model, Msg(..), init, update, view)
 
 import ComponentResult as CR
 import Css exposing (..)
@@ -7,7 +7,7 @@ import Html.Styled as H
 import Html.Styled.Attributes as A
 import Html.Styled.Events as E
 import Styles exposing (baseFontColor, buttonReset, mediumUp)
-import Types exposing (Flags)
+import Types exposing (Flags, PageMsg(..))
 
 
 type Msg
@@ -20,11 +20,7 @@ type alias Model =
 
 
 type alias NavbarResult =
-    CR.ComponentResult Model Msg ExternalMsg Never
-
-
-type ExternalMsg
-    = Never
+    CR.ComponentResult Model Msg PageMsg Never
 
 
 init : Model
@@ -50,6 +46,7 @@ linkCss =
         , cursor pointer
         , fontSize (px 16)
         , baseFontColor
+        , textDecoration none
         , textAlign center
         , hover
             [ backgroundColor (rgba 0 0 0 0.08)

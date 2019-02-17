@@ -198,7 +198,7 @@ loginView model =
 
 view : Model -> Document Msg
 view model =
-    { title = "hi"
+    { title = "Tony's Simple Content Storage"
     , body =
         [ Html.map NavbarMsg (Navbar.view model.navbar)
         , div [ style "margin-top" "48px" ]
@@ -217,7 +217,7 @@ view model =
 
 
 type alias AppResult =
-    CR.ComponentResult Model Msg PageMsg Never
+    CR.ComponentResult Model Msg Never Never
 
 
 handlePageMsg : PageMsg -> AppResult -> AppResult
@@ -225,8 +225,8 @@ handlePageMsg msg result =
     result
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+updateApplication : Msg -> Model -> ( Model, Cmd Msg )
+updateApplication msg model =
     case msg of
         LoadStoredToken result ->
             ( { model
@@ -297,7 +297,7 @@ update msg model =
             Navbar.update model.flags navbarMsg model.navbar
                 |> CR.mapModel (\navbar -> { model | navbar = navbar })
                 |> CR.mapMsg NavbarMsg
-                |> CR.applyExternalMsg (\ext result -> result)
+                |> CR.applyExternalMsg handlePageMsg
                 |> CR.resolve
 
         _ ->
@@ -342,7 +342,7 @@ main =
             \msg model ->
                 let
                     ( newModel, cmd ) =
-                        update msg model
+                        updateApplication msg model
                 in
                 updatePage msg newModel
                     |> Tuple.mapSecond (\pageCmd -> Cmd.batch [ cmd, pageCmd ])
