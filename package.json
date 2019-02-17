@@ -30,7 +30,6 @@
     "@cycle/http": "^15.1.0",
     "@cycle/run": "^5.2.0",
     "body-parser": "^1.18.3",
-    "config": "^3.0.1",
     "cors": "^2.8.5",
     "dotenv": "^6.2.0",
     "ecstatic": "^3.3.0",

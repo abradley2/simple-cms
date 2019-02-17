@@ -1,14 +1,12 @@
-require('dotenv').config()
+const config = require('dotenv').config().parsed
 const fs = require('fs')
 const path = require('path')
 const logger = require('pino')()
 const { setup } = require('@cycle/run')
-const config = require('config')
 const express = require('express')
 const makeEFFECTSDrivers = require('@abradley2/cycle-effects')
 const { makeHTTPDriver } = require('@cycle/http')
 const ecstatic = require('ecstatic')
-const createValidator = require('is-my-json-valid')
 const qs = require('query-string')
 const uuid = require('uuid')
 const bodyParser = require('body-parser')
@@ -44,23 +42,8 @@ server.use(ecstatic({
   root: path.join(__dirname, '../dist')
 }))
 
-const configValidation = createValidator(
-  require('../config/config-schema'),
-  { verbose: true }
-)
-
-configValidation(config)
-
-if (configValidation.errors && configValidation.errors.length) {
-  const error = new Error('Failed to launch, config invalid')
-  logger.error(error)
-  logger.info(JSON.stringify(configValidation.errors, null, 2))
-  process.exit()
-}
-
-const port = config.get('port')
-server.listen(port, function () {
-  logger.info(`Server listening on port ${port}`)
+server.listen(process.env.PORT, function () {
+  logger.info(`Server listening on port ${process.env.PORT}`)
 })
 
 function createHandler (handler) {

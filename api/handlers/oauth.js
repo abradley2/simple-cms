@@ -47,8 +47,8 @@ const handler = (req, config) => ({ EFFECT, HTTP }) => {
   const { code, redirectUrl, state } = req.body
 
   const tokenRequestParams = qs.stringify({
-    client_id: config.ghClientId,
-    client_secret: config.ghClientSecret,
+    client_id: config.GH_CLIENT_ID,
+    client_secret: config.GH_CLIENT_SECRET,
     code,
     state,
     redirect_uri: redirectUrl
