@@ -1,3 +1,4 @@
+require('dotenv').config()
 const fs = require('fs')
 const path = require('path')
 const logger = require('pino')()
@@ -12,7 +13,6 @@ const qs = require('query-string')
 const uuid = require('uuid')
 const bodyParser = require('body-parser')
 const cors = require('cors')
-
 const server = express()
 
 const api = express.Router()
@@ -26,11 +26,6 @@ server.use('/api', api)
 api.get(
   '/folders',
   createHandler(require('./handlers/folders').get)
-)
-
-api.get(
-  '/config',
-  createHandler(require('./handlers/client-config').handler)
 )
 
 api.post(

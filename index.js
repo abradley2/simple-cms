@@ -10,7 +10,8 @@ const apiUrl = process.env.NODE_ENV === 'development'
 
 const flags = {
   apiUrl,
-  origin: window.location.origin
+  origin: window.location.origin,
+  oauthUrl: `https://github.com/login/oauth/authorize?client_id=${process.env.GH_CLIENT_ID}`
 }
 
 const app = Elm.Main.init({

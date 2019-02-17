@@ -1,9 +1,12 @@
 module Page.Folders.Main exposing (Model, Msg(..), init, update, view)
 
 import ComponentResult as CR
+import Data.Folders exposing (GetFoldersResponse, getFolders)
 import Html.Styled as H
 import Html.Styled.Attributes as A
 import Html.Styled.Events as E
+import Http
+import RemoteData exposing (RemoteData(..), WebData)
 import Types exposing (Flags)
 
 
@@ -17,6 +20,7 @@ type ExternalMsg
 
 type Msg
     = NoOp
+    | FoldersResponseReceived (Result Http.Error GetFoldersResponse)
 
 
 type alias PageResult =

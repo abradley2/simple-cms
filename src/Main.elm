@@ -3,7 +3,6 @@ port module Main exposing (main)
 import Browser exposing (Document)
 import Browser.Navigation as Navigation
 import ComponentResult as CR
-import Data.Config exposing (ConfigResponse, getConfig)
 import Data.Token exposing (TokenResponse, getToken)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -13,7 +12,7 @@ import Page.Folders.Main as FoldersPage
 import Page.Upload.Main as UploadPage
 import Random
 import RemoteData exposing (RemoteData(..), WebData)
-import Types exposing (Flags)
+import Types exposing (Flags, Taco)
 import UUID
 import Url
 import Url.Builder as Builder
@@ -34,7 +33,6 @@ type
     Msg
     -- application level messages
     = NoOp
-    | ConfigResponseReceived (Result Http.Error ConfigResponse)
     | TokenResponseReceived (Result Http.Error TokenResponse)
     | LoadStoredToken (Maybe String)
     | OnUrlRequest Browser.UrlRequest
@@ -56,13 +54,19 @@ type alias Model =
     { flags : Flags
     , key : Navigation.Key
     , url : Url.Url
-    , config : WebData ConfigResponse
     , token : WebData (Maybe String) -- TODO: seperate "storedToken" and "token"
     , clientId : Maybe UUID.UUID
     , oauthCode : Maybe String
     , route : Route
     , navbar : Navbar.Model
     , page : Page
+    }
+
+
+getTaco : Model -> Taco
+getTaco model =
+    { apiUrl = model.flags.apiUrl
+    , token = RemoteData.toMaybe model.token |> Maybe.andThen (\v -> v)
     }
 
 
@@ -137,7 +141,6 @@ init flags url key =
             { flags = flags
             , key = key
             , url = url
-            , config = Loading
             , token = Loading
             , clientId = Nothing
             , oauthCode = oauthCode
@@ -152,10 +155,6 @@ init flags url key =
     ( model
     , Cmd.batch
         [ pageCmd
-        , -- load any server based configuration variables
-          getConfig
-            flags
-            ConfigResponseReceived
 
         -- uuid for clientId or "state" variable. We can use this for oauth
         , Random.generate GeneratedClientId UUID.generator
@@ -166,8 +165,8 @@ init flags url key =
     )
 
 
-loadedView : Model -> ConfigResponse -> Maybe String -> Html Msg
-loadedView model config mToken =
+loadedView : Model -> Maybe String -> Html Msg
+loadedView model mToken =
     div []
         [ case mToken of
             Just token ->
@@ -186,7 +185,7 @@ loadedView model config mToken =
             Nothing ->
                 let
                     oauthUrl =
-                        config.oauthUrl ++ "&redirect_uri=" ++ model.flags.origin
+                        model.flags.oauthUrl ++ "&redirect_uri=" ++ model.flags.origin
                 in
                 div []
                     [ a [ href oauthUrl ] [ text "please authenticate with Github" ]
@@ -204,8 +203,7 @@ view model =
                 [ div
                     [ class "container"
                     ]
-                    [ RemoteData.map2 (loadedView model)
-                        model.config
+                    [ RemoteData.map (loadedView model)
                         model.token
                         |> RemoteData.withDefault (div [] [ text "loading!" ])
                     ]
@@ -218,18 +216,6 @@ view model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ConfigResponseReceived result ->
-            let
-                newModel =
-                    case result of
-                        Result.Ok configResponse ->
-                            { model | config = Success configResponse }
-
-                        Result.Err err ->
-                            { model | config = Failure err }
-            in
-            ( newModel, Cmd.none )
-
         LoadStoredToken result ->
             ( { model | token = Success result }, Cmd.none )
 
@@ -283,23 +269,28 @@ update msg model =
                 |> CR.resolve
 
         _ ->
-            case ( model.page, msg ) of
-                ( Folders foldersPage, FoldersMsg foldersMsg ) ->
-                    FoldersPage.update model.flags foldersMsg foldersPage
-                        |> CR.mapModel (\page -> { model | page = Folders page })
-                        |> CR.mapMsg FoldersMsg
-                        |> CR.applyExternalMsg (\ext result -> result)
-                        |> CR.resolve
+            ( model, Cmd.none )
 
-                ( Upload uploadPage, UploadMsg uploadMsg ) ->
-                    UploadPage.update model.flags uploadMsg uploadPage
-                        |> CR.mapModel (\page -> { model | page = Upload page })
-                        |> CR.mapMsg UploadMsg
-                        |> CR.applyExternalMsg (\ext result -> result)
-                        |> CR.resolve
 
-                _ ->
-                    ( model, Cmd.none )
+updatePage : Msg -> Model -> ( Model, Cmd Msg )
+updatePage msg model =
+    case ( model.page, msg ) of
+        ( Folders foldersPage, FoldersMsg foldersMsg ) ->
+            FoldersPage.update model.flags foldersMsg foldersPage
+                |> CR.mapModel (\page -> { model | page = Folders page })
+                |> CR.mapMsg FoldersMsg
+                |> CR.applyExternalMsg (\ext result -> result)
+                |> CR.resolve
+
+        ( Upload uploadPage, UploadMsg uploadMsg ) ->
+            UploadPage.update model.flags uploadMsg uploadPage
+                |> CR.mapModel (\page -> { model | page = Upload page })
+                |> CR.mapMsg UploadMsg
+                |> CR.applyExternalMsg (\ext result -> result)
+                |> CR.resolve
+
+        _ ->
+            ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -315,7 +306,14 @@ main =
     Browser.application
         { init = init
         , view = view
-        , update = update
+        , update =
+            \msg model ->
+                let
+                    ( newModel, cmd ) =
+                        update msg model
+                in
+                updatePage msg newModel
+                    |> Tuple.mapSecond (\pageCmd -> Cmd.batch [ cmd, pageCmd ])
         , onUrlChange = OnUrlChange
         , onUrlRequest = OnUrlRequest
         , subscriptions = subscriptions

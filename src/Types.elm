@@ -1,7 +1,14 @@
-module Types exposing (Flags)
+module Types exposing (Flags, Taco)
 
 
 type alias Flags =
-    { apiUrl : String
+    { oauthUrl : String
+    , apiUrl : String
     , origin : String
+    }
+
+
+type alias Taco =
+    { apiUrl : String
+    , token : Maybe String
     }
