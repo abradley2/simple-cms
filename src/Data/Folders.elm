@@ -1,4 +1,4 @@
-module Data.Folders exposing (CreateFolderResponse, GetFoldersResponse, createFolder, getFolders)
+module Data.Folders exposing (CreateFolderResponse, Folder, GetFoldersResponse, createFolder, getFolders)
 
 import Http
 import Json.Decode as D
@@ -7,11 +7,20 @@ import Types exposing (Taco, Token, tokenToString)
 
 
 decodeFoldersResponse =
-    D.list D.string
+    D.list <|
+        D.map2 Folder
+            (D.at [ "_id" ] D.string)
+            (D.at [ "folderName" ] D.string)
+
+
+type alias Folder =
+    { id : String
+    , name : String
+    }
 
 
 type alias GetFoldersResponse =
-    List String
+    List Folder
 
 
 getFolders : Taco -> (Result Http.Error GetFoldersResponse -> a) -> Token -> Cmd a

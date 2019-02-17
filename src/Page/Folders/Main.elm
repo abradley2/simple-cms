@@ -3,7 +3,7 @@ module Page.Folders.Main exposing (Model, Msg(..), init, update, view)
 import ComponentResult as CR
 import Css exposing (..)
 import Css.Transitions as Transitions
-import Data.Folders exposing (CreateFolderResponse, GetFoldersResponse, createFolder, getFolders)
+import Data.Folders exposing (CreateFolderResponse, Folder, GetFoldersResponse, createFolder, getFolders)
 import FormElements.TextInput as TextInput
 import Html.Styled as H
 import Html.Styled.Attributes as A
@@ -125,12 +125,14 @@ update taco msg model =
                 model
 
 
-folderView : Model -> String -> H.Html Msg
-folderView model folderName =
-    H.div [] []
+folderView : Model -> Folder -> H.Html Msg
+folderView model folder =
+    H.div []
+        [ H.text folder.name
+        ]
 
 
-folderListView : Model -> List String -> List (H.Html Msg)
+folderListView : Model -> List Folder -> List (H.Html Msg)
 folderListView model folders =
     let
         len =
