@@ -54,7 +54,10 @@ type alias Model =
     { flags : Flags
     , key : Navigation.Key
     , url : Url.Url
-    , token : WebData (Maybe String) -- TODO: seperate "storedToken" and "token"
+    , token : WebData String
+
+    -- delineating token as loaded from browser storage for simplicity sake
+    , storedToken : RemoteData String String
     , clientId : Maybe UUID.UUID
     , oauthCode : Maybe String
     , route : Route
@@ -66,7 +69,7 @@ type alias Model =
 getTaco : Model -> Taco
 getTaco model =
     { apiUrl = model.flags.apiUrl
-    , token = RemoteData.toMaybe model.token |> Maybe.andThen (\v -> v)
+    , token = RemoteData.toMaybe model.token
     }
 
 
@@ -141,7 +144,8 @@ init flags url key =
             { flags = flags
             , key = key
             , url = url
-            , token = Loading
+            , token = NotAsked
+            , storedToken = Loading
             , clientId = Nothing
             , oauthCode = oauthCode
             , route = route
@@ -165,31 +169,31 @@ init flags url key =
     )
 
 
-loadedView : Model -> Maybe String -> Html Msg
-loadedView model mToken =
+loadedView : Model -> Html Msg
+loadedView model =
     div []
-        [ case mToken of
-            Just token ->
-                case model.page of
-                    Folders foldersPage ->
-                        FoldersPage.view foldersPage
-                            |> Html.map FoldersMsg
+        [ case model.page of
+            Folders foldersPage ->
+                FoldersPage.view foldersPage
+                    |> Html.map FoldersMsg
 
-                    Upload uploadPage ->
-                        UploadPage.view uploadPage
-                            |> Html.map UploadMsg
+            Upload uploadPage ->
+                UploadPage.view uploadPage
+                    |> Html.map UploadMsg
 
-                    _ ->
-                        div [] [ text "hello there" ]
+            _ ->
+                div [] [ text "hello there" ]
+        ]
 
-            Nothing ->
-                let
-                    oauthUrl =
-                        model.flags.oauthUrl ++ "&redirect_uri=" ++ model.flags.origin
-                in
-                div []
-                    [ a [ href oauthUrl ] [ text "please authenticate with Github" ]
-                    ]
+
+loginView : Model -> Html Msg
+loginView model =
+    let
+        oauthUrl =
+            model.flags.oauthUrl ++ "&redirect_uri=" ++ model.flags.origin
+    in
+    div []
+        [ a [ href oauthUrl ] [ text "please authenticate with Github" ]
         ]
 
 
@@ -203,9 +207,15 @@ view model =
                 [ div
                     [ class "container"
                     ]
-                    [ RemoteData.map (loadedView model)
-                        model.token
-                        |> RemoteData.withDefault (div [] [ text "loading!" ])
+                    [ case ( model.token, model.storedToken ) of
+                        ( Success token, _ ) ->
+                            loadedView model
+
+                        ( _, Failure _ ) ->
+                            loginView model
+
+                        _ ->
+                            div [] [ text "loading" ]
                     ]
                 ]
             ]
@@ -217,7 +227,18 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         LoadStoredToken result ->
-            ( { model | token = Success result }, Cmd.none )
+            ( { model
+                | storedToken =
+                    Maybe.map Success result
+                        |> Maybe.withDefault (Failure "not found")
+
+                -- if we found a token on storage, copy it over to the token
+                , token =
+                    Maybe.map Success result
+                        |> Maybe.withDefault NotAsked
+              }
+            , Cmd.none
+            )
 
         OnUrlRequest req ->
             case req of
@@ -235,7 +256,7 @@ update msg model =
             case result of
                 Result.Ok tokenResponse ->
                     ( { model
-                        | token = Success <| Just tokenResponse.token
+                        | token = Success tokenResponse.token
                       }
                     , storeToken tokenResponse.token
                     )
