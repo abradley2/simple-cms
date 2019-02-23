@@ -23,7 +23,7 @@ type alias Model =
     , newFolderTextInput : TextInput.Model
     , foldersData : WebData GetFoldersResponse
     , folderUploadForms : Dict.Dict String UploadForm.Model
-    , expandedFolder : Maybe String
+    , expandedFolder : Maybe Folder
     }
 
 
@@ -34,7 +34,7 @@ type Msg
     | CreateNewFolderResponseReceived (Result Http.Error CreateFolderResponse)
     | ToggleCreatingNewFolder Bool
     | SubmitCreateFolder Token
-    | ExpandFolder (Maybe String)
+    | ExpandFolder (Maybe Folder)
     | UploadFormMsg String UploadForm.Msg
 
 
@@ -89,23 +89,23 @@ update taco msg model =
                 (Dict.get key model.folderUploadForms)
                 |> Maybe.withDefault (CR.withModel model)
 
-        ExpandFolder mFolderId ->
+        ExpandFolder mFolder ->
             let
                 -- reinitialize the expanded upload form
                 folderUploadForms =
                     Maybe.map
-                        (\folderId ->
+                        (\folder ->
                             Dict.insert
-                                folderId
-                                UploadForm.init
+                                folder.id
+                                (UploadForm.init folder)
                                 model.folderUploadForms
                         )
-                        mFolderId
+                        mFolder
                         |> Maybe.withDefault model.folderUploadForms
             in
             CR.withModel
                 { model
-                    | expandedFolder = mFolderId
+                    | expandedFolder = mFolder
                     , folderUploadForms = folderUploadForms
                 }
 
@@ -175,7 +175,7 @@ folderView : Model -> Folder -> H.Html Msg
 folderView model folder =
     let
         expanded =
-            Maybe.map (\id -> id == folder.id) model.expandedFolder
+            Maybe.map (\f -> f.id == folder.id) model.expandedFolder
                 |> Maybe.withDefault False
 
         handleExpand =
@@ -183,12 +183,11 @@ folderView model folder =
                 ExpandFolder Nothing
 
             else
-                ExpandFolder <| Just folder.id
+                ExpandFolder <| Just folder
     in
     H.div
         [ A.css
-            [ padding (px 16)
-            , margin (px 8)
+            [ margin (px 8)
             , boxSizing borderBox
             , borderRadius (px 3)
             , Styles.mediumUp
@@ -206,6 +205,7 @@ folderView model folder =
                     , displayFlex
                     , justifyContent spaceBetween
                     , width (pct 100)
+                    , padding (px 16)
                     ]
                 , E.onClick handleExpand
                 ]
