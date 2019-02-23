@@ -1,4 +1,4 @@
-module Styles exposing (baseFontColor, buttonReset, container, defaultButton, mediumUp, white)
+module Styles exposing (baseFontColor, buttonReset, container, defaultButton, mediumUp, primary, secondary, white)
 
 import Css exposing (..)
 import Css.Media
@@ -10,6 +10,10 @@ white =
 
 primary =
     hex "#60b5cd"
+
+
+secondary =
+    hex "#646e83"
 
 
 baseFontColor =
@@ -51,4 +55,10 @@ container =
 mediumUp =
     Css.Media.withMediaQuery
         [ "screen and (min-width: 768px)"
+        ]
+
+
+largeUp =
+    Css.Media.withMediaQuery
+        [ "screen and (min-width: 992px)"
         ]

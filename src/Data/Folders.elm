@@ -1,22 +1,25 @@
-module Data.Folders exposing (CreateFolderResponse, Folder, GetFoldersResponse, createFolder, getFolders)
+module Data.Folders exposing (CreateFolderResponse, GetFoldersResponse, createFolder, getFolders)
 
 import Http
 import Json.Decode as D
 import Json.Encode as E
-import Types exposing (Taco, Token, tokenToString)
+import Types exposing (Folder, Taco, Token, tokenToString)
 
 
 decodeFoldersResponse =
     D.list <|
-        D.map2 Folder
+        D.map4 Folder
             (D.at [ "_id" ] D.string)
             (D.at [ "folderName" ] D.string)
-
-
-type alias Folder =
-    { id : String
-    , name : String
-    }
+            (D.at [ "files" ] <|
+                D.list
+                    (D.map2
+                        (\id name -> { id = id, name = name })
+                        (D.at [ "_id" ] D.string)
+                        (D.at [ "name" ] D.string)
+                    )
+            )
+            (D.at [ "tags" ] <| D.list D.string)
 
 
 type alias GetFoldersResponse =

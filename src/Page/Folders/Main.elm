@@ -3,7 +3,7 @@ module Page.Folders.Main exposing (Model, Msg(..), init, update, view)
 import ComponentResult as CR
 import Css exposing (..)
 import Css.Transitions as Transitions
-import Data.Folders exposing (CreateFolderResponse, Folder, GetFoldersResponse, createFolder, getFolders)
+import Data.Folders exposing (CreateFolderResponse, GetFoldersResponse, createFolder, getFolders)
 import FormElements.TextInput as TextInput
 import Html.Styled as H
 import Html.Styled.Attributes as A
@@ -12,7 +12,7 @@ import Http
 import Maybe.Extra as M
 import RemoteData exposing (RemoteData(..), WebData)
 import Styles as Styles
-import Types exposing (PageMsg(..), Taco, Token)
+import Types exposing (Folder, PageMsg(..), Taco, Token)
 
 
 type alias Model =
@@ -20,6 +20,7 @@ type alias Model =
     , newFolderName : String
     , newFolderTextInput : TextInput.Model
     , foldersData : WebData GetFoldersResponse
+    , expandedFolder : Maybe String
     }
 
 
@@ -30,6 +31,7 @@ type Msg
     | CreateNewFolderResponseReceived (Result Http.Error CreateFolderResponse)
     | ToggleCreatingNewFolder Bool
     | SubmitCreateFolder Token
+    | ExpandFolder (Maybe String)
 
 
 type alias PageResult =
@@ -42,6 +44,7 @@ init taco =
         { creatingNewFolder = False
         , newFolderName = ""
         , newFolderTextInput = Tuple.first <| TextInput.init "new-folder"
+        , expandedFolder = Nothing
         , foldersData = Maybe.map (\_ -> Loading) taco.token |> Maybe.withDefault NotAsked
         }
         |> CR.withCmd
@@ -64,6 +67,9 @@ initNewFolderNameInput =
 update : Taco -> Msg -> Model -> PageResult
 update taco msg model =
     case msg of
+        ExpandFolder mFolderId ->
+            CR.withModel { model | expandedFolder = mFolderId }
+
         SubmitCreateFolder token ->
             let
                 newModel =
@@ -127,8 +133,74 @@ update taco msg model =
 
 folderView : Model -> Folder -> H.Html Msg
 folderView model folder =
-    H.div []
-        [ H.text folder.name
+    let
+        expanded =
+            Maybe.map (\id -> id == folder.id) model.expandedFolder
+                |> Maybe.withDefault False
+
+        handleExpand =
+            if expanded then
+                ExpandFolder Nothing
+
+            else
+                ExpandFolder <| Just folder.id
+    in
+    H.div
+        [ A.css
+            [ padding (px 16)
+            , margin (px 8)
+            , boxSizing borderBox
+            , borderRadius (px 3)
+            , Styles.mediumUp
+                [ width (calc (pct 50) minus (px 16))
+                ]
+            , width (calc (pct 100) minus (px 16))
+            , display inlineBlock
+            , border3 (px 1) solid Styles.secondary
+            ]
+        ]
+        [ H.div []
+            [ H.button
+                [ A.css
+                    [ Styles.buttonReset
+                    , displayFlex
+                    , justifyContent spaceBetween
+                    , width (pct 100)
+                    ]
+                , E.onClick handleExpand
+                ]
+                [ H.span []
+                    [ H.text folder.name
+                    ]
+                , H.span
+                    []
+                    [ H.span
+                        [ A.css
+                            [ color Styles.primary
+                            ]
+                        , A.class "fa fa-chevron-down"
+                        ]
+                        []
+                    ]
+                ]
+            ]
+        , H.div
+            [ A.css
+                [ overflow hidden
+                , Transitions.transition
+                    [ Transitions.height 300
+                    ]
+                , batch <|
+                    if expanded then
+                        [ height (px 150)
+                        ]
+
+                    else
+                        [ height (px 0)
+                        ]
+                ]
+            ]
+            []
         ]
 
 
@@ -260,7 +332,16 @@ view_ ( model, token ) =
             [ H.div []
                 (case model.foldersData of
                     Success folders ->
-                        folderListView model folders
+                        [ H.div
+                            [ A.css
+                                [ displayFlex
+                                , alignItems flexStart
+                                , flexWrap wrap
+                                ]
+                            ]
+                          <|
+                            folderListView model folders
+                        ]
 
                     Failure _ ->
                         [ H.div [] [ H.text "failed to load folders" ] ]
