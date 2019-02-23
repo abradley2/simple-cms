@@ -4,14 +4,16 @@ import ComponentResult as CR
 import Css exposing (..)
 import Css.Transitions as Transitions
 import Data.Folders exposing (CreateFolderResponse, GetFoldersResponse, createFolder, getFolders)
+import Dict
 import FormElements.TextInput as TextInput
 import Html.Styled as H
 import Html.Styled.Attributes as A
 import Html.Styled.Events as E
 import Http
 import Maybe.Extra as M
+import Page.Folders.UploadForm as UploadForm
 import RemoteData exposing (RemoteData(..), WebData)
-import Styles as Styles
+import Styles
 import Types exposing (Folder, PageMsg(..), Taco, Token)
 
 
@@ -20,6 +22,7 @@ type alias Model =
     , newFolderName : String
     , newFolderTextInput : TextInput.Model
     , foldersData : WebData GetFoldersResponse
+    , folderUploadForms : Dict.Dict String UploadForm.Model
     , expandedFolder : Maybe String
     }
 
@@ -32,6 +35,7 @@ type Msg
     | ToggleCreatingNewFolder Bool
     | SubmitCreateFolder Token
     | ExpandFolder (Maybe String)
+    | UploadFormMsg String UploadForm.Msg
 
 
 type alias PageResult =
@@ -46,6 +50,7 @@ init taco =
         , newFolderTextInput = Tuple.first <| TextInput.init "new-folder"
         , expandedFolder = Nothing
         , foldersData = Maybe.map (\_ -> Loading) taco.token |> Maybe.withDefault NotAsked
+        , folderUploadForms = Dict.empty
         }
         |> CR.withCmd
             (Maybe.map (getFolders taco FoldersResponseReceived) taco.token
@@ -67,8 +72,42 @@ initNewFolderNameInput =
 update : Taco -> Msg -> Model -> PageResult
 update taco msg model =
     case msg of
+        UploadFormMsg key uploadFormMsg ->
+            Maybe.map
+                (\uploadForm ->
+                    UploadForm.update uploadFormMsg uploadForm
+                        |> CR.mapModel
+                            (\newUploadForm ->
+                                { model
+                                    | folderUploadForms =
+                                        Dict.insert key newUploadForm model.folderUploadForms
+                                }
+                            )
+                        |> CR.mapMsg (UploadFormMsg key)
+                        |> CR.applyExternalMsg (\extMsg result -> result)
+                )
+                (Dict.get key model.folderUploadForms)
+                |> Maybe.withDefault (CR.withModel model)
+
         ExpandFolder mFolderId ->
-            CR.withModel { model | expandedFolder = mFolderId }
+            let
+                -- reinitialize the expanded upload form
+                folderUploadForms =
+                    Maybe.map
+                        (\folderId ->
+                            Dict.insert
+                                folderId
+                                UploadForm.init
+                                model.folderUploadForms
+                        )
+                        mFolderId
+                        |> Maybe.withDefault model.folderUploadForms
+            in
+            CR.withModel
+                { model
+                    | expandedFolder = mFolderId
+                    , folderUploadForms = folderUploadForms
+                }
 
         SubmitCreateFolder token ->
             let
@@ -114,10 +153,11 @@ update taco msg model =
 
         FoldersResponseReceived result ->
             case result of
-                Result.Ok folders ->
+                Result.Ok res ->
                     CR.withModel
                         { model
-                            | foldersData = Success folders
+                            | foldersData = Success res
+                            , folderUploadForms = Dict.empty
                         }
 
                 Result.Err err ->
@@ -200,7 +240,11 @@ folderView model folder =
                         ]
                 ]
             ]
-            []
+            [ Maybe.map
+                (UploadForm.view folder >> H.map (UploadFormMsg folder.id))
+                (Dict.get folder.id model.folderUploadForms)
+                |> Maybe.withDefault (H.text "")
+            ]
         ]
 
 

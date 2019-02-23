@@ -7,6 +7,7 @@ const apiUrl = process.env.NODE_ENV === 'development'
   ? 'http://localhost:9966'
   : ''
 
+console.log(process.env.GH_CLIENT_ID)
 const flags = {
   apiUrl,
   origin: window.location.origin,
