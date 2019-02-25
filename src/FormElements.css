@@ -20,7 +20,8 @@
   box-shadow: 0px 0px 0px 1px #60b5cd;
 }
 .eti-container .eti-text-input__wrapper {
-  display: inline-block;
+  display: flex;
+  width: 100%;
 }
 .eti-container .eti-text-input__input {
   background-color: transparent;
@@ -29,6 +30,7 @@
   font-size: 16px;
   height: calc(48px - 8px);
   padding: 8px 8px 0px 8px;
+  width: 100%;
 }
 .eti-container .eti-text-input__label {
   position: absolute;
