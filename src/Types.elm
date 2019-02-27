@@ -31,8 +31,7 @@ type alias Taco =
 
 
 type PageMsg
-    = NoOpExternal
-    | ShowErrorMsg String
+    = SetErrorMessage String
 
 
 type alias Folder =

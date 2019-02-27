@@ -4,6 +4,7 @@ import Browser exposing (Document)
 import Browser.Navigation as Navigation
 import ComponentResult as CR
 import Data.Token exposing (TokenResponse, getToken)
+import ErrorMessage
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -32,6 +33,7 @@ type
     Msg
     -- application level messages
     = NoOp
+    | CloseErrorMessage
     | TokenResponseReceived (Result Http.Error TokenResponse)
     | LoadStoredToken (Maybe String)
     | OnUrlRequest Browser.UrlRequest
@@ -54,6 +56,7 @@ type alias Model =
     , key : Navigation.Key
     , url : Url.Url
     , token : WebData String
+    , errorMessage : Maybe String
 
     -- delineating token as loaded from browser storage for simplicity sake
     , storedToken : RemoteData String String
@@ -150,6 +153,7 @@ init flags url key =
             , route = route
             , navbar = Navbar.init
             , page = NotFound Nothing
+            , errorMessage = Just "Something bad happened"
             }
 
         ( model, pageCmd ) =
@@ -201,6 +205,8 @@ view model =
     { title = "Tony's Simple Content Storage"
     , body =
         [ Html.map NavbarMsg (Navbar.view model.navbar)
+        , Maybe.map (ErrorMessage.view CloseErrorMessage) model.errorMessage
+            |> Maybe.withDefault (text "")
         , div [ style "margin-top" "48px" ]
             [ case ( model.token, model.storedToken ) of
                 ( Success token, _ ) ->
@@ -222,12 +228,22 @@ type alias AppResult =
 
 handlePageMsg : PageMsg -> AppResult -> AppResult
 handlePageMsg msg result =
-    result
+    case msg of
+        SetErrorMessage errorMessage ->
+            result
+                |> CR.mapModel (\model -> { model | errorMessage = Just errorMessage })
 
 
 updateApplication : Msg -> Model -> ( Model, Cmd Msg )
 updateApplication msg model =
     case msg of
+        CloseErrorMessage ->
+            ( { model
+                | errorMessage = Nothing
+              }
+            , Cmd.none
+            )
+
         LoadStoredToken result ->
             ( { model
                 | storedToken =
